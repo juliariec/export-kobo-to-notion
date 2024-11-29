@@ -18,7 +18,8 @@ async function exportHighlights() {
       if (book.Title.indexOf(":") !== -1) {
         book.Title = book.Title.substring(0, book.Title.indexOf(":"));
       }
-      let title = book.Title;
+      let title = book.Title,
+        author = book.Author;
 
       // Check Notion database for the book
       const response = await notion.databases.query({
@@ -31,18 +32,21 @@ async function exportHighlights() {
         },
       });
 
-      // Use the results to determine status of the book
-      var valid = false;
+      // Find the ID of the relevant book
+      var pageId = undefined;
       if (response.results.length === 1) {
-        valid = true;
+        pageId = response.results[0].id;
       } else if (response.results.length > 1) {
-        console.log(`${title} matched multiple items.`);
+        const authorMatch = response.results.filter(
+          (r) => r.properties.Author.rich_text[0].plain_text === author
+        );
+        if (authorMatch.length === 1) pageId = authorMatch[0].id;
+        else console.log(`${title} matched multiple items.`);
       } else {
         console.log(`${title} was skipped.`);
       }
 
-      if (valid) {
-        const pageId = response.results[0].id;
+      if (pageId) {
         var blocks = [];
 
         // Retrieves highlights for the book
